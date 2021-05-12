@@ -104,13 +104,13 @@ def test_typed_list():
     with pytest.raises(ValidationError) as exc_info:
         Model(v=[1, 'x', 'y'])
     assert exc_info.value.errors() == [
-        {'loc': ('v', 1), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
-        {'loc': ('v', 2), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+        {'loc': ('v', 1), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}},
+        {'loc': ('v', 2), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'y'}},
     ]
 
     with pytest.raises(ValidationError) as exc_info:
         Model(v=1)
-    assert exc_info.value.errors() == [{'loc': ('v',), 'msg': 'value is not a valid list', 'type': 'type_error.list'}]
+    assert exc_info.value.errors() == [{'loc': ('v',), 'msg': 'value is not a valid list', 'type': 'type_error.list', 'ctx': {'value': 1}}]
 
 
 def test_typed_set():
@@ -123,7 +123,7 @@ def test_typed_set():
     with pytest.raises(ValidationError) as exc_info:
         Model(v=[1, 'x'])
     assert exc_info.value.errors() == [
-        {'loc': ('v', 1), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('v', 1), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}
     ]
 
 
@@ -163,9 +163,9 @@ def test_typed_dict(value, result):
 @pytest.mark.parametrize(
     'value,errors',
     [
-        (1, [{'loc': ('v',), 'msg': 'value is not a valid dict', 'type': 'type_error.dict'}]),
-        ({'a': 'b'}, [{'loc': ('v', 'a'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}]),
-        ([1, 2, 3], [{'loc': ('v',), 'msg': 'value is not a valid dict', 'type': 'type_error.dict'}]),
+        (1, [{'loc': ('v',), 'msg': 'value is not a valid dict', 'type': 'type_error.dict', 'ctx': {'value': 1}}]),
+        ({'a': 'b'}, [{'loc': ('v', 'a'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'b'}}]),
+        ([1, 2, 3], [{'loc': ('v',), 'msg': 'value is not a valid dict', 'type': 'type_error.dict', 'ctx': {'value': [1,2,3]}}]),
     ],
 )
 def test_typed_dict_error(value, errors):
@@ -186,7 +186,7 @@ def test_dict_key_error():
     with pytest.raises(ValidationError) as exc_info:
         Model(v={'foo': 2, '3': '4'})
     assert exc_info.value.errors() == [
-        {'loc': ('v', '__key__'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('v', '__key__'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'foo'}}
     ]
 
 
@@ -248,7 +248,7 @@ def test_tuple_invalid():
 
     with pytest.raises(ValidationError) as exc_info:
         Model(v='xxx')
-    assert exc_info.value.errors() == [{'loc': ('v',), 'msg': 'value is not a valid tuple', 'type': 'type_error.tuple'}]
+    assert exc_info.value.errors() == [{'loc': ('v',), 'msg': 'value is not a valid tuple', 'type': 'type_error.tuple', 'ctx': {'value': 'xxx'}}]
 
 
 def test_tuple_value_error():
@@ -258,9 +258,9 @@ def test_tuple_value_error():
     with pytest.raises(ValidationError) as exc_info:
         Model(v=['x', 'y', 'x'])
     assert exc_info.value.errors() == [
-        {'loc': ('v', 0), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
-        {'loc': ('v', 1), 'msg': 'value is not a valid float', 'type': 'type_error.float'},
-        {'loc': ('v', 2), 'msg': 'value is not a valid decimal', 'type': 'type_error.decimal'},
+        {'loc': ('v', 0), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}},
+        {'loc': ('v', 1), 'msg': 'value is not a valid float', 'type': 'type_error.float', 'ctx': {'value': 'y'}},
+        {'loc': ('v', 2), 'msg': 'value is not a valid decimal', 'type': 'type_error.decimal', 'ctx': {'value': 'x'}},
     ]
 
 
@@ -283,7 +283,7 @@ def test_recursive_list():
 
     with pytest.raises(ValidationError) as exc_info:
         Model(v=['x'])
-    assert exc_info.value.errors() == [{'loc': ('v', 0), 'msg': 'value is not a valid dict', 'type': 'type_error.dict'}]
+    assert exc_info.value.errors() == [{'loc': ('v', 0), 'msg': 'value is not a valid dict', 'type': 'type_error.dict', 'ctx': {'value': 'x'}}]
 
 
 def test_recursive_list_error():
@@ -808,8 +808,8 @@ def test_valid_string_types(value, expected):
 @pytest.mark.parametrize(
     'value,errors',
     [
-        ({'foo': 'bar'}, [{'loc': ('v',), 'msg': 'str type expected', 'type': 'type_error.str'}]),
-        ([1, 2, 3], [{'loc': ('v',), 'msg': 'str type expected', 'type': 'type_error.str'}]),
+        ({'foo': 'bar'}, [{'loc': ('v',), 'msg': 'str type expected', 'type': 'type_error.str', 'ctx': {'value': {'foo': 'bar'}}}]),
+        ([1, 2, 3], [{'loc': ('v',), 'msg': 'str type expected', 'type': 'type_error.str', 'ctx': {'value': [1,2,3]}}]),
     ],
 )
 def test_invalid_string_types(value, errors):
@@ -917,7 +917,7 @@ def test_return_errors_error():
     d, f, e = validate_model(Model, {'foo': '123', 'bar': (1, 2, 'x')}, False)
     assert d == {'foo': 123}
     assert f == {'foo', 'bar'}
-    assert e.errors() == [{'loc': ('bar', 2), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}]
+    assert e.errors() == [{'loc': ('bar', 2), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}]
 
     d, f, e = validate_model(Model, {'bar': (1, 2, 3)}, False)
     assert d == {'bar': [1, 2, 3]}
@@ -969,9 +969,9 @@ def test_multiple_errors():
         Model(a='foobar')
 
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
-        {'loc': ('a',), 'msg': 'value is not a valid float', 'type': 'type_error.float'},
-        {'loc': ('a',), 'msg': 'value is not a valid decimal', 'type': 'type_error.decimal'},
+        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'foobar'}},
+        {'loc': ('a',), 'msg': 'value is not a valid float', 'type': 'type_error.float', 'ctx': {'value': 'foobar'}},
+        {'loc': ('a',), 'msg': 'value is not a valid decimal', 'type': 'type_error.decimal', 'ctx': {'value': 'foobar'}},
     ]
     assert Model().a is None
     assert Model(a=None).a is None
@@ -1170,7 +1170,7 @@ def test_assign_type():
             'loc': ('v',),
             'msg': 'subclass of Parent expected',
             'type': 'type_error.subclass',
-            'ctx': {'expected_class': 'Parent'},
+            'ctx': {'expected_class': 'Parent', 'actual_type': 'Different'},
         }
     ]
 
@@ -1186,7 +1186,7 @@ def test_optional_subfields():
         Model(a='foobar')
 
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'foobar'}}
     ]
     assert Model().a is None
     assert Model(a=None).a is None
@@ -1209,7 +1209,7 @@ def test_not_optional_subfields():
         Model(a='foobar')
 
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'foobar'}}
     ]
     assert Model().a is None
     assert Model(a=None).a is None
@@ -1227,7 +1227,7 @@ def test_optional_field_constraints():
             'loc': ('my_int',),
             'msg': 'ensure this value is greater than or equal to 3',
             'type': 'value_error.number.not_ge',
-            'ctx': {'limit_value': 3},
+            'ctx': {'limit_value': 3, 'value': 2},
         }
     ]
 
@@ -1513,7 +1513,7 @@ def test_required_optional():
     with pytest.raises(ValidationError) as exc_info:
         Model(nullable1='some text')
     assert exc_info.value.errors() == [
-        {'loc': ('nullable1',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+        {'loc': ('nullable1',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'some text'}},
         {'loc': ('nullable2',), 'msg': 'field required', 'type': 'value_error.missing'},
     ]
 
@@ -1604,7 +1604,7 @@ def test_custom_generic_validators():
     with pytest.raises(ValidationError) as exc_info:
         Model(a='foo', gen=MyGen(t1='bar', t2='baz'), gen2=MyGen(t1='bar', t2='baz'))
     assert exc_info.value.errors() == [
-        {'loc': ('gen', 't2'), 'msg': 'value could not be parsed to a boolean', 'type': 'type_error.bool'}
+        {'loc': ('gen', 't2'), 'msg': 'value could not be parsed to a boolean', 'type': 'type_error.bool', 'ctx': {'value': 'baz'}}
     ]
 
     m = Model(a='foo', gen=MyGen(t1='bar', t2=True), gen2=MyGen(t1=1, t2=2))
@@ -1638,7 +1638,7 @@ def test_custom_generic_arbitrary_allowed():
             'loc': ('gen',),
             'msg': 'instance of MyGen expected',
             'type': 'type_error.arbitrary_type',
-            'ctx': {'expected_arbitrary_type': 'MyGen'},
+            'ctx': {'expected_arbitrary_type': 'MyGen', 'actual_type': 'str'},
         }
     ]
 
@@ -1679,7 +1679,7 @@ def test_hashable_required():
     with pytest.raises(ValidationError) as exc_info:
         Model(v=[])
     assert exc_info.value.errors() == [
-        {'loc': ('v',), 'msg': 'value is not a valid hashable', 'type': 'type_error.hashable'}
+        {'loc': ('v',), 'msg': 'value is not a valid hashable', 'type': 'type_error.hashable', 'ctx': {'value': []}}
     ]
     with pytest.raises(ValidationError) as exc_info:
         Model()
@@ -1724,7 +1724,7 @@ def test_default_factory_called_once():
         MyBadModel()
     assert v == 2  # `factory` has been called to run validation
     assert exc_info.value.errors() == [
-        {'loc': ('id',), 'msg': 'value is not a valid list', 'type': 'type_error.list'},
+        {'loc': ('id',), 'msg': 'value is not a valid list', 'type': 'type_error.list', 'ctx': {'value': 2}},
     ]
 
 

@@ -202,7 +202,7 @@ class AnyUrl(str):
         host, tld, host_type, rebuild = cls.validate_host(parts)
 
         if m.end() != len(url):
-            raise errors.UrlExtraError(extra=url[m.end() :])
+            raise errors.UrlExtraError(url=url, extra=url[m.end() :])
 
         return cls(
             None if rebuild else url,
@@ -226,18 +226,18 @@ class AnyUrl(str):
         """
         scheme = parts['scheme']
         if scheme is None:
-            raise errors.UrlSchemeError()
+            raise errors.UrlSchemeError(parts=parts)
 
         if cls.allowed_schemes and scheme.lower() not in cls.allowed_schemes:
-            raise errors.UrlSchemePermittedError(cls.allowed_schemes)
+            raise errors.UrlSchemePermittedError(allowed_schemes=cls.allowed_schemes, scheme=scheme)
 
         port = parts['port']
         if port is not None and int(port) > 65_535:
-            raise errors.UrlPortError()
+            raise errors.UrlPortError(port=port)
 
         user = parts['user']
         if cls.user_required and user is None:
-            raise errors.UrlUserInfoError()
+            raise errors.UrlUserInfoError(parts=parts)
 
         return parts
 
@@ -251,14 +251,14 @@ class AnyUrl(str):
                 break
 
         if host is None:
-            raise errors.UrlHostError()
+            raise errors.UrlHostError(parts=parts)
         elif host_type == 'domain':
             is_international = False
             d = ascii_domain_regex().fullmatch(host)
             if d is None:
                 d = int_domain_regex().fullmatch(host)
                 if d is None:
-                    raise errors.UrlHostError()
+                    raise errors.UrlHostError(parts=parts)
                 is_international = True
 
             tld = d.group('tld')
@@ -270,7 +270,7 @@ class AnyUrl(str):
             if tld is not None:
                 tld = tld[1:]
             elif cls.tld_required:
-                raise errors.UrlHostTldError()
+                raise errors.UrlHostTldError(parts=parts)
 
             if is_international:
                 host_type = 'int_domain'
@@ -413,7 +413,7 @@ class IPvAnyAddress(_BaseAddress):
         try:
             return IPv6Address(value)
         except ValueError:
-            raise errors.IPvAnyAddressError()
+            raise errors.IPvAnyAddressError(value=value)
 
 
 class IPvAnyInterface(_BaseAddress):
@@ -435,7 +435,7 @@ class IPvAnyInterface(_BaseAddress):
         try:
             return IPv6Interface(value)
         except ValueError:
-            raise errors.IPvAnyInterfaceError()
+            raise errors.IPvAnyInterfaceError(value=value)
 
 
 class IPvAnyNetwork(_BaseNetwork):  # type: ignore
@@ -459,7 +459,7 @@ class IPvAnyNetwork(_BaseNetwork):  # type: ignore
         try:
             return IPv6Network(value)
         except ValueError:
-            raise errors.IPvAnyNetworkError()
+            raise errors.IPvAnyNetworkError(value=value)
 
 
 pretty_email_regex = re.compile(r'([\w ]*?) *<(.*)> *')
@@ -489,7 +489,7 @@ def validate_email(value: Union[str]) -> Tuple[str, str]:
     try:
         email_validator.validate_email(email, check_deliverability=False)
     except email_validator.EmailNotValidError as e:
-        raise errors.EmailError() from e
+        raise errors.EmailError(email=email) from e
 
     at_index = email.index('@')
     local_part = email[:at_index]  # RFC 5321, local part must be case-sensitive.

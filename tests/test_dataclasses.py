@@ -46,7 +46,7 @@ def test_value_error():
         MyDataclass(1, 'wrong')
 
     assert exc_info.value.errors() == [
-        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'wrong'}}
     ]
 
 
@@ -90,7 +90,7 @@ def test_validate_assignment_error():
     with pytest.raises(ValidationError) as exc_info:
         d.a = 'xxx'
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'xxx'}}
     ]
 
 
@@ -273,7 +273,7 @@ def test_validate_long_string_error():
             'loc': ('a',),
             'msg': 'ensure this value has at most 3 characters',
             'type': 'value_error.any_str.max_length',
-            'ctx': {'limit_value': 3},
+            'ctx': {'limit_value': 3, 'value': 'xxxx'},
         }
     ]
 
@@ -297,7 +297,7 @@ def test_validate_assigment_long_string_error():
             'loc': ('a',),
             'msg': 'ensure this value has at most 3 characters',
             'type': 'value_error.any_str.max_length',
-            'ctx': {'limit_value': 3},
+            'ctx': {'limit_value': 3, 'value': 'xxxx'},
         }
     ]
 
@@ -345,14 +345,14 @@ def test_nested_dataclass():
             'loc': ('n',),
             'msg': 'instance of Nested, tuple or dict expected',
             'type': 'type_error.dataclass',
-            'ctx': {'class_name': 'Nested'},
+            'ctx': {'class_name': 'Nested', 'actual_type': 'str'},
         }
     ]
 
     with pytest.raises(ValidationError) as exc_info:
         Outer(n=('x',))
     assert exc_info.value.errors() == [
-        {'loc': ('n', 'number'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('n', 'number'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}
     ]
 
 
@@ -379,7 +379,7 @@ def test_arbitrary_types_allowed():
             'loc': ('button',),
             'msg': 'instance of Button expected',
             'type': 'type_error.arbitrary_type',
-            'ctx': {'expected_arbitrary_type': 'Button'},
+            'ctx': {'expected_arbitrary_type': 'Button', 'actual_type': 'tuple'},
         }
     ]
 
@@ -633,7 +633,7 @@ def test_hashable_required():
     with pytest.raises(ValidationError) as exc_info:
         MyDataclass(v=[])
     assert exc_info.value.errors() == [
-        {'loc': ('v',), 'msg': 'value is not a valid hashable', 'type': 'type_error.hashable'}
+        {'loc': ('v',), 'msg': 'value is not a valid hashable', 'type': 'type_error.hashable', 'ctx': {'value': []}}
     ]
     with pytest.raises(TypeError) as exc_info:
         MyDataclass()
@@ -665,7 +665,7 @@ def test_override_builtin_dataclass():
 
     with pytest.raises(ValidationError) as e:
         FileChecked(hash=[1], name='name', size=3)
-    assert e.value.errors() == [{'loc': ('hash',), 'msg': 'str type expected', 'type': 'type_error.str'}]
+    assert e.value.errors() == [{'loc': ('hash',), 'msg': 'str type expected', 'type': 'type_error.str', 'ctx': {'value': [1]}}]
 
 
 def test_override_builtin_dataclass_2():
@@ -708,7 +708,7 @@ def test_override_builtin_dataclass_nested():
     with pytest.raises(ValidationError) as e:
         FileChecked(filename=b'thefilename', meta=Meta(modified_date='2020-01-01T00:00', seen_count=['7']))
     assert e.value.errors() == [
-        {'loc': ('meta', 'seen_count'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('meta', 'seen_count'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': ['7']}}
     ]
 
     foo = Foo.parse_obj(

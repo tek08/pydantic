@@ -97,7 +97,7 @@ def _parse_timezone(value: Optional[str], error: Type[Exception]) -> Union[None,
         try:
             return timezone(timedelta(minutes=offset))
         except ValueError:
-            raise error()
+            raise error(value=value)
     else:
         return None
 
@@ -194,7 +194,7 @@ def parse_datetime(value: Union[datetime, StrBytesIntFloat]) -> datetime:
 
     match = datetime_re.match(value)  # type: ignore
     if match is None:
-        raise errors.DateTimeError()
+        raise errors.DateTimeError(value=value)
 
     kw = match.groupdict()
     if kw['microsecond']:
@@ -233,7 +233,7 @@ def parse_duration(value: StrBytesIntFloat) -> timedelta:
         raise TypeError('invalid type; expected timedelta, string, bytes, int or float')
 
     if not match:
-        raise errors.DurationError()
+        raise errors.DurationError(value=value)
 
     kw = match.groupdict()
     sign = -1 if kw.pop('sign', '+') == '-' else 1

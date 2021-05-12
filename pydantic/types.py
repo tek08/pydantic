@@ -175,7 +175,7 @@ else:
             if isinstance(value, bool):
                 return value
 
-            raise errors.StrictBoolError()
+            raise errors.StrictBoolError(value=value)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ INTEGER TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -400,7 +400,7 @@ class ConstrainedStr(str):
 
         if cls.regex:
             if not cls.regex.match(value):
-                raise errors.StrRegexError(pattern=cls.regex.pattern)
+                raise errors.StrRegexError(value=value, pattern=cls.regex.pattern)
 
         return value
 
@@ -465,10 +465,10 @@ class ConstrainedSet(set):  # type: ignore
         v_len = len(v)
 
         if cls.min_items is not None and v_len < cls.min_items:
-            raise errors.SetMinLengthError(limit_value=cls.min_items)
+            raise errors.SetMinLengthError(value=v, limit_value=cls.min_items)
 
         if cls.max_items is not None and v_len > cls.max_items:
-            raise errors.SetMaxLengthError(limit_value=cls.max_items)
+            raise errors.SetMaxLengthError(value=v, limit_value=cls.max_items)
 
         return v
 
@@ -509,10 +509,10 @@ class ConstrainedList(list):  # type: ignore
         v_len = len(v)
 
         if cls.min_items is not None and v_len < cls.min_items:
-            raise errors.ListMinLengthError(limit_value=cls.min_items)
+            raise errors.ListMinLengthError(value=v, limit_value=cls.min_items)
 
         if cls.max_items is not None and v_len > cls.max_items:
-            raise errors.ListMaxLengthError(limit_value=cls.max_items)
+            raise errors.ListMaxLengthError(value=v, limit_value=cls.max_items)
 
         return v
 
@@ -546,12 +546,15 @@ else:
             try:
                 value = str_validator(value)
             except errors.StrError:
-                raise errors.PyObjectError(error_message='value is neither a valid import path not a valid callable')
+                raise errors.PyObjectError(
+                    value=value,
+                    error_message='value is neither a valid import path not a valid callable'
+                )
 
             try:
                 return import_string(value)
             except ImportError as e:
-                raise errors.PyObjectError(error_message=str(e))
+                raise errors.PyObjectError(value=value, error_message=str(e))
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DECIMAL TYPES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -588,7 +591,7 @@ class ConstrainedDecimal(Decimal, metaclass=ConstrainedNumberMeta):
     def validate(cls, value: Decimal) -> Decimal:
         digit_tuple, exponent = value.as_tuple()[1:]
         if exponent in {'F', 'n', 'N'}:
-            raise errors.DecimalIsNotFiniteError()
+            raise errors.DecimalIsNotFiniteError(value=value)
 
         if exponent >= 0:
             # A positive exponent adds that many trailing zeros.
@@ -608,7 +611,7 @@ class ConstrainedDecimal(Decimal, metaclass=ConstrainedNumberMeta):
         whole_digits = digits - decimals
 
         if cls.max_digits is not None and digits > cls.max_digits:
-            raise errors.DecimalMaxDigitsError(max_digits=cls.max_digits)
+            raise errors.DecimalMaxDigitsError(value=value, max_digits=cls.max_digits)
 
         if cls.decimal_places is not None and decimals > cls.decimal_places:
             raise errors.DecimalMaxPlacesError(decimal_places=cls.decimal_places)
@@ -757,7 +760,7 @@ class SecretStr:
     def validate(cls, value: Any) -> 'SecretStr':
         if isinstance(value, cls):
             return value
-        value = str_validator(value)
+        value = str_validator(value, is_secret=True)
         return cls(value)
 
     def __init__(self, value: str):
@@ -807,7 +810,7 @@ class SecretBytes:
     def validate(cls, value: Any) -> 'SecretBytes':
         if isinstance(value, cls):
             return value
-        value = bytes_validator(value)
+        value = bytes_validator(value, is_secret=True)
         return cls(value)
 
     def __init__(self, value: bytes):
@@ -977,7 +980,7 @@ class ByteSize(int):
 
         str_match = byte_string_re.match(str(v))
         if str_match is None:
-            raise errors.InvalidByteSize()
+            raise errors.InvalidByteSize(value=v)
 
         scalar, unit = str_match.groups()
         if unit is None:

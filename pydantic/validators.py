@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     StrBytes = Union[str, bytes]
 
 
-def str_validator(v: Any) -> Union[str]:
+def str_validator(v: Any, is_secret: bool=False) -> Union[str]:
     if isinstance(v, str):
         if isinstance(v, Enum):
             return v.value
@@ -67,16 +67,16 @@ def str_validator(v: Any) -> Union[str]:
     elif isinstance(v, (bytes, bytearray)):
         return v.decode()
     else:
-        raise errors.StrError()
+        raise errors.StrError(value=v if not is_secret else '*' * len(str(v)))
 
 
 def strict_str_validator(v: Any) -> Union[str]:
     if isinstance(v, str):
         return v
-    raise errors.StrError()
+    raise errors.StrError(value=v)
 
 
-def bytes_validator(v: Any) -> bytes:
+def bytes_validator(v: Any, is_secret: bool=False) -> bytes:
     if isinstance(v, bytes):
         return v
     elif isinstance(v, bytearray):
@@ -86,7 +86,7 @@ def bytes_validator(v: Any) -> bytes:
     elif isinstance(v, (float, int, Decimal)):
         return str(v).encode()
     else:
-        raise errors.BytesError()
+        raise errors.BytesError(value=v if not is_secret else '**REDACTED**')
 
 
 def strict_bytes_validator(v: Any) -> Union[bytes]:
@@ -95,7 +95,7 @@ def strict_bytes_validator(v: Any) -> Union[bytes]:
     elif isinstance(v, bytearray):
         return bytes(v)
     else:
-        raise errors.BytesError()
+        raise errors.BytesError(value=v)
 
 
 BOOL_FALSE = {0, '0', 'off', 'f', 'false', 'n', 'no'}
@@ -115,8 +115,8 @@ def bool_validator(v: Any) -> bool:
         if v in BOOL_FALSE:
             return False
     except TypeError:
-        raise errors.BoolError()
-    raise errors.BoolError()
+        raise errors.BoolError(value=v)
+    raise errors.BoolError(value=v)
 
 
 def int_validator(v: Any) -> int:
@@ -126,13 +126,13 @@ def int_validator(v: Any) -> int:
     try:
         return int(v)
     except (TypeError, ValueError):
-        raise errors.IntegerError()
+        raise errors.IntegerError(value=v)
 
 
 def strict_int_validator(v: Any) -> int:
     if isinstance(v, int) and not (v is True or v is False):
         return v
-    raise errors.IntegerError()
+    raise errors.IntegerError(value=v)
 
 
 def float_validator(v: Any) -> float:
@@ -142,13 +142,13 @@ def float_validator(v: Any) -> float:
     try:
         return float(v)
     except (TypeError, ValueError):
-        raise errors.FloatError()
+        raise errors.FloatError(value=v)
 
 
 def strict_float_validator(v: Any) -> float:
     if isinstance(v, float):
         return v
-    raise errors.FloatError()
+    raise errors.FloatError(value=v)
 
 
 def number_multiple_validator(v: 'Number', field: 'ModelField') -> 'Number':
@@ -156,21 +156,21 @@ def number_multiple_validator(v: 'Number', field: 'ModelField') -> 'Number':
     if field_type.multiple_of is not None:
         mod = float(v) / float(field_type.multiple_of) % 1
         if not almost_equal_floats(mod, 0.0) and not almost_equal_floats(mod, 1.0):
-            raise errors.NumberNotMultipleError(multiple_of=field_type.multiple_of)
+            raise errors.NumberNotMultipleError(value=v, multiple_of=field_type.multiple_of)
     return v
 
 
 def number_size_validator(v: 'Number', field: 'ModelField') -> 'Number':
     field_type: ConstrainedNumber = field.type_
     if field_type.gt is not None and not v > field_type.gt:
-        raise errors.NumberNotGtError(limit_value=field_type.gt)
+        raise errors.NumberNotGtError(value=v, limit_value=field_type.gt)
     elif field_type.ge is not None and not v >= field_type.ge:
-        raise errors.NumberNotGeError(limit_value=field_type.ge)
+        raise errors.NumberNotGeError(value=v, limit_value=field_type.ge)
 
     if field_type.lt is not None and not v < field_type.lt:
-        raise errors.NumberNotLtError(limit_value=field_type.lt)
+        raise errors.NumberNotLtError(value=v, limit_value=field_type.lt)
     if field_type.le is not None and not v <= field_type.le:
-        raise errors.NumberNotLeError(limit_value=field_type.le)
+        raise errors.NumberNotLeError(value=v, limit_value=field_type.le)
 
     return v
 
@@ -193,11 +193,11 @@ def anystr_length_validator(v: 'StrBytes', config: 'BaseConfig') -> 'StrBytes':
 
     min_length = config.min_anystr_length
     if min_length is not None and v_len < min_length:
-        raise errors.AnyStrMinLengthError(limit_value=min_length)
+        raise errors.AnyStrMinLengthError(value=v, limit_value=min_length)
 
     max_length = config.max_anystr_length
     if max_length is not None and v_len > max_length:
-        raise errors.AnyStrMaxLengthError(limit_value=max_length)
+        raise errors.AnyStrMaxLengthError(value=v, limit_value=max_length)
 
     return v
 
@@ -217,7 +217,7 @@ def ordered_dict_validator(v: Any) -> 'AnyOrderedDict':
     try:
         return OrderedDict(v)
     except (TypeError, ValueError):
-        raise errors.DictError()
+        raise errors.DictError(value=v)
 
 
 def dict_validator(v: Any) -> Dict[Any, Any]:
@@ -227,7 +227,7 @@ def dict_validator(v: Any) -> Dict[Any, Any]:
     try:
         return dict(v)
     except (TypeError, ValueError):
-        raise errors.DictError()
+        raise errors.DictError(value=v)
 
 
 def list_validator(v: Any) -> List[Any]:
@@ -236,7 +236,7 @@ def list_validator(v: Any) -> List[Any]:
     elif sequence_like(v):
         return list(v)
     else:
-        raise errors.ListError()
+        raise errors.ListError(value=v)
 
 
 def tuple_validator(v: Any) -> Tuple[Any, ...]:
@@ -254,7 +254,7 @@ def set_validator(v: Any) -> Set[Any]:
     elif sequence_like(v):
         return set(v)
     else:
-        raise errors.SetError()
+        raise errors.SetError(value=v)
 
 
 def frozenset_validator(v: Any) -> FrozenSet[Any]:
@@ -263,7 +263,7 @@ def frozenset_validator(v: Any) -> FrozenSet[Any]:
     elif sequence_like(v):
         return frozenset(v)
     else:
-        raise errors.FrozenSetError()
+        raise errors.FrozenSetError(value=v)
 
 
 def deque_validator(v: Any) -> Deque[Any]:
@@ -272,7 +272,7 @@ def deque_validator(v: Any) -> Deque[Any]:
     elif sequence_like(v):
         return deque(v)
     else:
-        raise errors.DequeError()
+        raise errors.DequeError(value=v)
 
 
 def enum_member_validator(v: Any, field: 'ModelField', config: 'BaseConfig') -> Enum:
@@ -280,7 +280,7 @@ def enum_member_validator(v: Any, field: 'ModelField', config: 'BaseConfig') -> 
         enum_v = field.type_(v)
     except ValueError:
         # field.type_ should be an enum, so will be iterable
-        raise errors.EnumMemberError(enum_values=list(field.type_))
+        raise errors.EnumMemberError(value=v, enum_values=list(field.type_))
     return enum_v.value if config.use_enum_values else enum_v
 
 
@@ -296,10 +296,10 @@ def uuid_validator(v: Any, field: 'ModelField') -> UUID:
                 # the above check
                 v = UUID(bytes=v)
     except ValueError:
-        raise errors.UUIDError()
+        raise errors.UUIDError(value=v)
 
     if not isinstance(v, UUID):
-        raise errors.UUIDError()
+        raise errors.UUIDError(value=v)
 
     required_version = getattr(field.type_, '_required_version', None)
     if required_version and v.version != required_version:
@@ -319,10 +319,10 @@ def decimal_validator(v: Any) -> Decimal:
     try:
         v = Decimal(v)
     except DecimalException:
-        raise errors.DecimalError()
+        raise errors.DecimalError(value=v)
 
     if not v.is_finite():
-        raise errors.DecimalIsNotFiniteError()
+        raise errors.DecimalIsNotFiniteError(value=v)
 
     return v
 
@@ -331,7 +331,7 @@ def hashable_validator(v: Any) -> Hashable:
     if isinstance(v, Hashable):
         return v
 
-    raise errors.HashableError()
+    raise errors.HashableError(value=v)
 
 
 def ip_v4_address_validator(v: Any) -> IPv4Address:
@@ -367,7 +367,7 @@ def ip_v4_network_validator(v: Any) -> IPv4Network:
     try:
         return IPv4Network(v)
     except ValueError:
-        raise errors.IPv4NetworkError()
+        raise errors.IPv4NetworkError(value=v)
 
 
 def ip_v6_network_validator(v: Any) -> IPv6Network:
@@ -383,7 +383,7 @@ def ip_v6_network_validator(v: Any) -> IPv6Network:
     try:
         return IPv6Network(v)
     except ValueError:
-        raise errors.IPv6NetworkError()
+        raise errors.IPv6NetworkError(value=v)
 
 
 def ip_v4_interface_validator(v: Any) -> IPv4Interface:
@@ -393,7 +393,7 @@ def ip_v4_interface_validator(v: Any) -> IPv4Interface:
     try:
         return IPv4Interface(v)
     except ValueError:
-        raise errors.IPv4InterfaceError()
+        raise errors.IPv4InterfaceError(value=v)
 
 
 def ip_v6_interface_validator(v: Any) -> IPv6Interface:
@@ -403,7 +403,7 @@ def ip_v6_interface_validator(v: Any) -> IPv6Interface:
     try:
         return IPv6Interface(v)
     except ValueError:
-        raise errors.IPv6InterfaceError()
+        raise errors.IPv6InterfaceError(value=v)
 
 
 def path_validator(v: Any) -> Path:
@@ -413,7 +413,7 @@ def path_validator(v: Any) -> Path:
     try:
         return Path(v)
     except TypeError:
-        raise errors.PathError()
+        raise errors.PathError(value=v)
 
 
 def path_exists_validator(v: Any) -> Path:
@@ -471,11 +471,11 @@ def constr_length_validator(v: 'StrBytes', field: 'ModelField', config: 'BaseCon
 
     min_length = field.type_.min_length or config.min_anystr_length
     if min_length is not None and v_len < min_length:
-        raise errors.AnyStrMinLengthError(limit_value=min_length)
+        raise errors.AnyStrMinLengthError(value=v, limit_value=min_length)
 
     max_length = field.type_.max_length or config.max_anystr_length
     if max_length is not None and v_len > max_length:
-        raise errors.AnyStrMaxLengthError(limit_value=max_length)
+        raise errors.AnyStrMaxLengthError(value=v, limit_value=max_length)
 
     return v
 
@@ -502,9 +502,9 @@ def validate_json(v: Any, config: 'BaseConfig') -> Any:
     try:
         return config.json_loads(v)  # type: ignore
     except ValueError:
-        raise errors.JsonError()
+        raise errors.JsonError(value=v)
     except TypeError:
-        raise errors.JsonTypeError()
+        raise errors.JsonTypeError(value=v)
 
 
 T = TypeVar('T')
@@ -514,7 +514,7 @@ def make_arbitrary_type_validator(type_: Type[T]) -> Callable[[T], T]:
     def arbitrary_type_validator(v: Any) -> T:
         if isinstance(v, type_):
             return v
-        raise errors.ArbitraryTypeError(expected_arbitrary_type=type_)
+        raise errors.ArbitraryTypeError(expected_arbitrary_type=type_, actual_type=type(v))
 
     return arbitrary_type_validator
 
@@ -523,7 +523,7 @@ def make_class_validator(type_: Type[T]) -> Callable[[Any], Type[T]]:
     def class_validator(v: Any) -> Type[T]:
         if lenient_issubclass(v, type_):
             return v
-        raise errors.SubclassError(expected_class=type_)
+        raise errors.SubclassError(expected_class=type_, actual_type=v)
 
     return class_validator
 
@@ -531,13 +531,13 @@ def make_class_validator(type_: Type[T]) -> Callable[[Any], Type[T]]:
 def any_class_validator(v: Any) -> Type[T]:
     if isinstance(v, type):
         return v
-    raise errors.ClassError()
+    raise errors.ClassError(actual_type=type(v))
 
 
 def none_validator(v: Any) -> 'Literal[None]':
     if v is None:
         return v
-    raise errors.NotNoneError()
+    raise errors.NotNoneError(value=v)
 
 
 def pattern_validator(v: Any) -> Pattern[str]:
@@ -549,7 +549,7 @@ def pattern_validator(v: Any) -> Pattern[str]:
     try:
         return re.compile(str_value)
     except re.error:
-        raise errors.PatternError()
+        raise errors.PatternError(value=v)
 
 
 NamedTupleT = TypeVar('NamedTupleT', bound=NamedTuple)
@@ -564,8 +564,9 @@ def make_namedtuple_validator(namedtuple_cls: Type[NamedTupleT]) -> Callable[[Tu
     def namedtuple_validator(values: Tuple[Any, ...]) -> NamedTupleT:
         annotations = NamedTupleModel.__annotations__
 
-        if len(values) > len(annotations):
-            raise errors.ListMaxLengthError(limit_value=len(annotations))
+        v_len = len(values)
+        if v_len > len(annotations):
+            raise errors.ListMaxLengthError(value=values, limit_value=len(annotations))
 
         dict_values: Dict[str, Any] = dict(zip(annotations, values))
         validated_dict_values: Dict[str, Any] = dict(NamedTupleModel(**dict_values))

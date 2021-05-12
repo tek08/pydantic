@@ -36,7 +36,7 @@ def test_args():
         foo(1, 'x')
 
     assert exc_info.value.errors() == [
-        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}
     ]
 
     with pytest.raises(ValidationError) as exc_info:
@@ -103,7 +103,7 @@ def test_kwargs():
         foo(a=1, b='x')
 
     assert exc_info.value.errors() == [
-        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}
     ]
 
     with pytest.raises(ValidationError) as exc_info:
@@ -284,7 +284,7 @@ def test_string_annotation():
     with pytest.raises(ValidationError) as exc_info:
         foo(['x'])
     assert exc_info.value.errors() == [
-        {'loc': ('a', 0), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+        {'loc': ('a', 0), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}},
         {'loc': ('b',), 'msg': 'field required', 'type': 'value_error.missing'},
     ]
 
@@ -382,7 +382,7 @@ def test_config_arbitrary_types_allowed():
             'loc': ('b',),
             'msg': 'instance of EggBox expected',
             'type': 'type_error.arbitrary_type',
-            'ctx': {'expected_arbitrary_type': 'EggBox'},
+            'ctx': {'expected_arbitrary_type': 'EggBox', 'actual_type': 'int'},
         },
     ]
 

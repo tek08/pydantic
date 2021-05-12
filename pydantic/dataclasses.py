@@ -51,7 +51,7 @@ def _validate_dataclass(cls: Type['DataclassT'], v: Any) -> 'DataclassT':
 
         return cls(**dataclasses.asdict(v))
     else:
-        raise DataclassTypeError(class_name=cls.__name__)
+        raise DataclassTypeError(class_name=cls.__name__, actual_type=type(v))
 
 
 def _get_validators(cls: Type['Dataclass']) -> 'CallableGenerator':

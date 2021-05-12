@@ -1,7 +1,9 @@
 from decimal import Decimal
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Set, Tuple, Type, Union, AnyStr
 
+from .networks import NetworkType
+from .types import StrIntFloat, StrBytes
 from .typing import display_as_type
 
 if TYPE_CHECKING:
@@ -113,6 +115,8 @@ class PydanticErrorMixin:
     code: str
     msg_template: str
 
+    # TODO(tek): truncate all values in self.__dict__?
+
     def __init__(self, **ctx: Any) -> None:
         self.__dict__ = ctx
 
@@ -121,6 +125,11 @@ class PydanticErrorMixin:
 
     def __reduce__(self) -> Tuple[Callable[..., 'PydanticErrorMixin'], Tuple[Type['PydanticErrorMixin'], 'DictStrAny']]:
         return cls_kwargs, (self.__class__, self.__dict__)
+
+
+def _safe_truncate(value: Any) -> str:
+    string_rep: str = str(value)
+    return f"{string_rep[0:100]}..." if len(string_rep) > 100 else string_rep
 
 
 class PydanticTypeError(PydanticErrorMixin, TypeError):
@@ -308,39 +317,39 @@ class ListMinLengthError(PydanticValueError):
     code = 'list.min_items'
     msg_template = 'ensure this value has at least {limit_value} items'
 
-    def __init__(self, *, limit_value: int) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: 'Optional[Set[T]]', limit_value: int) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class ListMaxLengthError(PydanticValueError):
     code = 'list.max_items'
     msg_template = 'ensure this value has at most {limit_value} items'
 
-    def __init__(self, *, limit_value: int) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: 'Optional[Set[T]]', limit_value: int) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class SetMinLengthError(PydanticValueError):
     code = 'set.min_items'
     msg_template = 'ensure this value has at least {limit_value} items'
 
-    def __init__(self, *, limit_value: int) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: 'Optional[Set[T]]', limit_value: int) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class SetMaxLengthError(PydanticValueError):
     code = 'set.max_items'
     msg_template = 'ensure this value has at most {limit_value} items'
 
-    def __init__(self, *, limit_value: int) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: 'Optional[Set[T]]', limit_value: int) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class AnyStrMinLengthError(PydanticValueError):
     code = 'any_str.min_length'
     msg_template = 'ensure this value has at least {limit_value} characters'
 
-    def __init__(self, *, limit_value: int) -> None:
+    def __init__(self, *, value: 'StrBytes', limit_value: int) -> None:
         super().__init__(limit_value=limit_value)
 
 
@@ -348,8 +357,8 @@ class AnyStrMaxLengthError(PydanticValueError):
     code = 'any_str.max_length'
     msg_template = 'ensure this value has at most {limit_value} characters'
 
-    def __init__(self, *, limit_value: int) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: StrBytes, limit_value: int) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class StrError(PydanticTypeError):
@@ -365,8 +374,8 @@ class StrRegexError(PydanticValueError):
 
 
 class _NumberBoundError(PydanticValueError):
-    def __init__(self, *, limit_value: Union[int, float, Decimal]) -> None:
-        super().__init__(limit_value=limit_value)
+    def __init__(self, *, value: 'Number', limit_value: Union[int, float, Decimal]) -> None:
+        super().__init__(value=value, limit_value=limit_value)
 
 
 class NumberNotGtError(_NumberBoundError):
@@ -466,21 +475,24 @@ class ArbitraryTypeError(PydanticTypeError):
     code = 'arbitrary_type'
     msg_template = 'instance of {expected_arbitrary_type} expected'
 
-    def __init__(self, *, expected_arbitrary_type: Type[Any]) -> None:
-        super().__init__(expected_arbitrary_type=display_as_type(expected_arbitrary_type))
+    def __init__(self, *, expected_arbitrary_type: Type[Any], actual_type: Type[Any]) -> None:
+        super().__init__(expected_arbitrary_type=display_as_type(expected_arbitrary_type), actual_type=display_as_type(actual_type))
 
 
 class ClassError(PydanticTypeError):
     code = 'class'
     msg_template = 'a class is expected'
 
+    def __init__(self, *, actual_type: Type[Any]) -> None:
+        super().__init__(actual_type=display_as_type(actual_type))
+
 
 class SubclassError(PydanticTypeError):
     code = 'subclass'
     msg_template = 'subclass of {expected_class} expected'
 
-    def __init__(self, *, expected_class: Type[Any]) -> None:
-        super().__init__(expected_class=display_as_type(expected_class))
+    def __init__(self, *, expected_class: Type[Any], actual_type: Type[Any]) -> None:
+        super().__init__(expected_class=display_as_type(expected_class), actual_type=display_as_type(actual_type))
 
 
 class JsonError(PydanticValueError):
@@ -500,6 +512,9 @@ class PatternError(PydanticValueError):
 class DataclassTypeError(PydanticTypeError):
     code = 'dataclass'
     msg_template = 'instance of {class_name}, tuple or dict expected'
+
+    def __init__(self, *, class_name: str, actual_type: Type[Any]) -> None:
+        super().__init__(class_name=class_name, actual_type=display_as_type(actual_type))
 
 
 class CallableError(PydanticTypeError):

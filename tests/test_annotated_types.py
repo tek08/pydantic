@@ -52,6 +52,7 @@ def test_namedtuple():
             'loc': ('events', 0, 'a'),
             'msg': 'value is not a valid integer',
             'type': 'type_error.integer',
+            'ctx': {'value': 'qwe'}
         }
     ]
 
@@ -118,7 +119,7 @@ def test_namedtuple_right_length():
             'loc': ('p',),
             'msg': 'ensure this value has at most 2 items',
             'type': 'value_error.list.max_items',
-            'ctx': {'limit_value': 2},
+            'ctx': {'limit_value': 2, 'value': (1, 2, 3)},
         }
     ]
 
@@ -143,6 +144,7 @@ def test_typeddict():
             'loc': ('td', 'a'),
             'msg': 'value is not a valid integer',
             'type': 'type_error.integer',
+            'ctx': {'value': [1]}
         }
     ]
 
