@@ -777,15 +777,15 @@ class ModelField(Representation):
         if not sequence_like(v):
             e: errors_.PydanticTypeError
             if self.shape == SHAPE_LIST:
-                e = errors_.ListError()
+                e = errors_.ListError(value=v)
             elif self.shape in (SHAPE_TUPLE, SHAPE_TUPLE_ELLIPSIS):
-                e = errors_.TupleError()
+                e = errors_.TupleError(value=v)
             elif self.shape == SHAPE_SET:
-                e = errors_.SetError()
+                e = errors_.SetError(value=v)
             elif self.shape == SHAPE_FROZENSET:
-                e = errors_.FrozenSetError()
+                e = errors_.FrozenSetError(value=v)
             else:
-                e = errors_.SequenceError()
+                e = errors_.SequenceError(value=v)
             return v, ErrorWrapper(e, loc)
 
         loc = loc if isinstance(loc, tuple) else (loc,)
@@ -835,7 +835,7 @@ class ModelField(Representation):
         try:
             iterable = iter(v)
         except TypeError:
-            return v, ErrorWrapper(errors_.IterableError(), loc)
+            return v, ErrorWrapper(errors_.IterableError(value=v), loc)
         return iterable, None
 
     def _validate_tuple(
@@ -843,7 +843,7 @@ class ModelField(Representation):
     ) -> 'ValidateReturn':
         e: Optional[Exception] = None
         if not sequence_like(v):
-            e = errors_.TupleError()
+            e = errors_.TupleError(value=v)
         else:
             actual_length, expected_length = len(v), len(self.sub_fields)  # type: ignore
             if actual_length != expected_length:

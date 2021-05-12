@@ -84,7 +84,12 @@ def test_alias_error():
     with pytest.raises(ValidationError) as exc_info:
         Model(_a='foo')
     assert exc_info.value.errors() == [
-        {'loc': ('_a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {
+            'loc': ('_a',),
+            'msg': 'value is not a valid integer',
+            'type': 'type_error.integer',
+            'ctx': {'value': 'foo'}
+        }
     ]
 
 

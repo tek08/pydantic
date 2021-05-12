@@ -74,7 +74,7 @@ class Color(Representation):
             self._rgba = value._rgba
             value = value._original
         else:
-            raise ColorError(reason='value must be a tuple, list or string')
+            raise ColorError(value=value, reason='value must be a tuple, list or string')
 
         # if we've got here value must be a valid color
         self._original = value
@@ -210,7 +210,7 @@ def parse_tuple(value: Tuple[Any, ...]) -> RGBA:
         r, g, b = [parse_color_value(v) for v in value[:3]]
         return RGBA(r, g, b, parse_float_alpha(value[3]))
     else:
-        raise ColorError(reason='tuples must have length 3 or 4')
+        raise ColorError(value=value, reason='tuples must have length 3 or 4')
 
 
 def parse_str(value: str) -> RGBA:
@@ -268,7 +268,7 @@ def parse_str(value: str) -> RGBA:
         h, h_units, s, l_, a = m.groups()
         return parse_hsl(h, h_units, s, l_, parse_float_alpha(a))
 
-    raise ColorError(reason='string not recognised as a valid color')
+    raise ColorError(value=value, reason='string not recognised as a valid color')
 
 
 def ints_to_rgba(r: Union[int, str], g: Union[int, str], b: Union[int, str], alpha: Optional[float]) -> RGBA:
@@ -283,11 +283,11 @@ def parse_color_value(value: Union[int, str], max_val: int = 255) -> float:
     try:
         color = float(value)
     except ValueError:
-        raise ColorError(reason='color values must be a valid number')
+        raise ColorError(value=value, reason='color values must be a valid number')
     if 0 <= color <= max_val:
         return color / max_val
     else:
-        raise ColorError(reason=f'color values must be in the range 0 to {max_val}')
+        raise ColorError(value=value, reason=f'color values must be in the range 0 to {max_val}')
 
 
 def parse_float_alpha(value: Union[None, str, float, int]) -> Optional[float]:
@@ -302,14 +302,14 @@ def parse_float_alpha(value: Union[None, str, float, int]) -> Optional[float]:
         else:
             alpha = float(value)
     except ValueError:
-        raise ColorError(reason='alpha values must be a valid float')
+        raise ColorError(value=value, reason='alpha values must be a valid float')
 
     if almost_equal_floats(alpha, 1):
         return None
     elif 0 <= alpha <= 1:
         return alpha
     else:
-        raise ColorError(reason='alpha values must be in the range 0 to 1')
+        raise ColorError(value=value, reason='alpha values must be in the range 0 to 1')
 
 
 def parse_hsl(h: str, h_units: str, sat: str, light: str, alpha: Optional[float] = None) -> RGBA:

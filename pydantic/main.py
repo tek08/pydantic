@@ -749,7 +749,7 @@ class BaseModel(Representation, metaclass=ModelMetaclass):
             try:
                 value_as_dict = dict(value)
             except (TypeError, ValueError) as e:
-                raise DictError() from e
+                raise DictError(value=value) from e
             return cls(**value_as_dict)
 
     @classmethod

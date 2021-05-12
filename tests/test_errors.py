@@ -68,7 +68,7 @@ def test_interval_validation_error():
     with pytest.raises(ValidationError) as exc_info:
         MyModel(foobar={'model_type': 'foo', 'f': 'x'})
     assert exc_info.value.errors() == [
-        {'loc': ('foobar', 'f'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('foobar', 'f'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}
     ]
 
 
@@ -97,13 +97,13 @@ def test_error_on_optional():
         (
             'errors',
             [
-                {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+                {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', "ctx": {"value": "not_int"}},
                 {'loc': ('b', 'x'), 'msg': 'field required', 'type': 'value_error.missing'},
                 {'loc': ('b', 'z'), 'msg': 'field required', 'type': 'value_error.missing'},
-                {'loc': ('c', 0, 'x'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
-                {'loc': ('d',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
-                {'loc': ('d',), 'msg': 'value is not a valid uuid', 'type': 'type_error.uuid'},
-                {'loc': ('e', '__key__'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+                {'loc': ('c', 0, 'x'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'not_int'}},
+                {'loc': ('d',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'string'}},
+                {'loc': ('d',), 'msg': 'value is not a valid uuid', 'type': 'type_error.uuid', 'ctx': {'value': 'string'}},
+                {'loc': ('e', '__key__'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'not_int'}},
                 {'loc': ('f', 0), 'msg': 'none is not an allowed value', 'type': 'type_error.none.not_allowed'},
                 {
                     'loc': ('g',),
@@ -115,7 +115,7 @@ def test_error_on_optional():
                     'loc': ('h',),
                     'msg': 'yet another error message template 42',
                     'type': 'value_error.number.not_gt',
-                    'ctx': {'limit_value': 42},
+                    'ctx': {'limit_value': 42, 'value': 21},
                 },
             ],
         ),
@@ -128,7 +128,10 @@ def test_error_on_optional():
       "a"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
+    "ctx": {
+      "value": "not_int"
+    }
   },
   {
     "loc": [
@@ -153,21 +156,30 @@ def test_error_on_optional():
       "x"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
+    "ctx": {
+      "value": "not_int"
+    }
   },
   {
     "loc": [
       "d"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
+    "ctx": {
+      "value": "string"
+    }
   },
   {
     "loc": [
       "d"
     ],
     "msg": "value is not a valid uuid",
-    "type": "type_error.uuid"
+    "type": "type_error.uuid",
+    "ctx": {
+      "value": "string"
+    }
   },
   {
     "loc": [
@@ -175,7 +187,10 @@ def test_error_on_optional():
       "__key__"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
+    "ctx": {
+      "value": "not_int"
+    }
   },
   {
     "loc": [
@@ -202,6 +217,7 @@ def test_error_on_optional():
     "msg": "yet another error message template 42",
     "type": "value_error.number.not_gt",
     "ctx": {
+      "value": 21,
       "limit_value": 42
     }
   }
@@ -212,25 +228,25 @@ def test_error_on_optional():
             """\
 10 validation errors for Model
 a
-  value is not a valid integer (type=type_error.integer)
+  value is not a valid integer (type=type_error.integer; value=not_int)
 b -> x
   field required (type=value_error.missing)
 b -> z
   field required (type=value_error.missing)
 c -> 0 -> x
-  value is not a valid integer (type=type_error.integer)
+  value is not a valid integer (type=type_error.integer; value=not_int)
 d
-  value is not a valid integer (type=type_error.integer)
+  value is not a valid integer (type=type_error.integer; value=string)
 d
-  value is not a valid uuid (type=type_error.uuid)
+  value is not a valid uuid (type=type_error.uuid; value=string)
 e -> __key__
-  value is not a valid integer (type=type_error.integer)
+  value is not a valid integer (type=type_error.integer; value=not_int)
 f -> 0
   none is not an allowed value (type=type_error.none.not_allowed)
 g
   uuid version 1 expected (type=value_error.uuid.version; required_version=1)
 h
-  yet another error message template 42 (type=value_error.number.not_gt; limit_value=42)""",
+  yet another error message template 42 (type=value_error.number.not_gt; value=21; limit_value=42)""",
         ),
     ),
 )
@@ -303,7 +319,7 @@ def test_single_error():
     expected = """\
 1 validation error for Model
 x
-  value is not a valid integer (type=type_error.integer)"""
+  value is not a valid integer (type=type_error.integer; value=x)"""
     assert str(exc_info.value) == expected
     assert str(exc_info.value) == expected  # to check lru cache doesn't break anything
 
@@ -349,7 +365,7 @@ def test_validate_assignment_error():
         model.x = 'a'
     assert (
         str(exc_info.value)
-        == '1 validation error for Model\nx\n  value is not a valid integer (type=type_error.integer)'
+        == '1 validation error for Model\nx\n  value is not a valid integer (type=type_error.integer; value=a)'
     )
 
 
@@ -367,7 +383,7 @@ def test_submodel_override_validation_error():
     with pytest.raises(ValidationError) as exc_info:
         Model(submodel=submodel)
     assert exc_info.value.errors() == [
-        {'loc': ('submodel', 'x'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {'loc': ('submodel', 'x'), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'a'}}
     ]
 
 
@@ -383,9 +399,9 @@ def test_validation_error_methods():
         == """\
 1 validation error for Model
 x
-  value is not a valid integer (type=type_error.integer)"""
+  value is not a valid integer (type=type_error.integer; value=x)"""
     )
-    assert e.errors() == [{'loc': ('x',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}]
+    assert e.errors() == [{'loc': ('x',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}]
     assert e.json(indent=None) == (
         '[{"loc": ["x"], "msg": "value is not a valid integer", "type": "type_error.integer"}]'
     )

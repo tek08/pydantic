@@ -255,7 +255,7 @@ def prep_validators(v_funcs: Iterable[AnyCallable]) -> 'ValidatorsList':
     return [make_generic_validator(f) for f in v_funcs if f]
 
 
-all_kwargs = {'values', 'field', 'config'}
+all_kwargs = {'values', 'field', 'config', 'is_secret'}
 
 
 def _generic_validator_cls(validator: AnyCallable, sig: 'Signature', args: Set[str]) -> 'ValidatorCallable':
@@ -270,6 +270,7 @@ def _generic_validator_cls(validator: AnyCallable, sig: 'Signature', args: Set[s
             f'Invalid signature for validator {validator}: {sig}, should be: '
             f'(cls, value, values, config, field), "values", "config" and "field" are all optional.'
         )
+
 
     if has_kwargs:
         return lambda cls, v, values, field, config: validator(cls, v, values=values, field=field, config=config)
@@ -303,6 +304,9 @@ def _generic_validator_basic(validator: AnyCallable, sig: 'Signature', args: Set
             f'Invalid signature for validator {validator}: {sig}, should be: '
             f'(value, values, config, field), "values", "config" and "field" are all optional.'
         )
+
+    if 'is_secret' in args:
+        args -= {'is_secret'}
 
     if has_kwargs:
         return lambda cls, v, values, field, config: validator(v, values=values, field=field, config=config)

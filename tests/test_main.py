@@ -20,7 +20,7 @@ from pydantic import (
     ValidationError,
     constr,
     root_validator,
-    validator,
+    validator, SecretStr, SecretBytes,
 )
 from pydantic.typing import Literal
 
@@ -35,6 +35,52 @@ def test_success():
     assert m.a == 10.2
     assert m.b == 10
 
+
+def test_secret_str():
+    class Model(BaseModel):
+        a: SecretStr
+        b: str = 'woof'
+    with pytest.raises(ValidationError) as exc_info:
+        m = Model(a={"wrong input": "woops"})
+    assert exc_info.value.errors() == [{'loc': ('a',), 'msg': 'str type expected', 'type': 'type_error.str', 'ctx': {'value': '************************'}}]
+
+    class NonSecretModel(BaseModel):
+        a: str
+        b: str = 'woof'
+    with pytest.raises(ValidationError) as exc_info:
+        m = NonSecretModel(a={"wrong input": "woops"})
+    assert exc_info.value.errors() == [{'loc': ('a',), 'msg': 'str type expected', 'type': 'type_error.str', 'ctx': {'value': {"wrong input": "woops"}}}]
+
+
+def test_secret_bytes():
+    class NonSecretModel(BaseModel):
+        a: bytes
+    with pytest.raises(ValidationError) as exc_info:
+        a = NonSecretModel(a={"Very not secret bytes"})
+
+    assert exc_info.value.errors() == [
+        {
+            'loc': ('a',),
+            'msg': 'byte type expected',
+            'type': 'type_error.bytes',
+            'ctx': {'value': {'Very not secret bytes'}}
+        }
+    ]
+
+    class Model(BaseModel):
+        a: SecretBytes
+        b: str = 'bark'
+    with pytest.raises(ValidationError) as exc_info:
+        a = Model(a={"i am not bytes"})
+
+    assert exc_info.value.errors() == [
+        {
+            'loc': ('a',),
+            'msg': 'byte type expected',
+            'type': 'type_error.bytes',
+            'ctx': {'value': '**REDACTED**'}
+        }
+    ]
 
 class UltraSimpleModel(BaseModel):
     a: float
@@ -51,8 +97,8 @@ def test_ultra_simple_failed():
     with pytest.raises(ValidationError) as exc_info:
         UltraSimpleModel(a='x', b='x')
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid float', 'type': 'type_error.float'},
-        {'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
+        {'ctx': {'value': 'x'}, 'loc': ('a',), 'msg': 'value is not a valid float', 'type': 'type_error.float'},
+        {'ctx': {'value': 'x'}, 'loc': ('b',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'},
     ]
 
 
@@ -137,7 +183,10 @@ def test_nullable_strings_fails():
             required_bytes_none_value=None,
         )
     assert exc_info.value.errors() == [
-        {'loc': ('required_str_value',), 'msg': 'none is not an allowed value', 'type': 'type_error.none.not_allowed'},
+        {
+            'loc': ('required_str_value',),
+            'msg': 'none is not an allowed value',
+            'type': 'type_error.none.not_allowed'},
         {
             'loc': ('required_bytes_value',),
             'msg': 'none is not an allowed value',
@@ -664,7 +713,12 @@ def test_validating_assignment_fail():
     with pytest.raises(ValidationError) as exc_info:
         p.a = 'b'
     assert exc_info.value.errors() == [
-        {'loc': ('a',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}
+        {
+            'loc': ('a',),
+            'msg': 'value is not a valid integer',
+            'type': 'type_error.integer',
+            'ctx': {'value': 'b'}
+        }
     ]
 
     with pytest.raises(ValidationError) as exc_info:
@@ -878,7 +932,8 @@ def test_arbitrary_type_allowed_validation_fails():
             'loc': ('t',),
             'msg': 'instance of ArbitraryType expected',
             'type': 'type_error.arbitrary_type',
-            'ctx': {'expected_arbitrary_type': 'ArbitraryType'},
+            'ctx': {'expected_arbitrary_type': 'ArbitraryType',
+                    'type': "C"}
         }
     ]
 
@@ -927,7 +982,7 @@ def test_type_type_validation_fails_for_instance():
             'loc': ('t',),
             'msg': 'subclass of ArbitraryType expected',
             'type': 'type_error.subclass',
-            'ctx': {'expected_class': 'ArbitraryType'},
+            'ctx': {'expected_class': 'ArbitraryType', 'actual_type': 'type'},
         }
     ]
 
@@ -943,7 +998,7 @@ def test_type_type_validation_fails_for_basic_type():
             'loc': ('t',),
             'msg': 'subclass of ArbitraryType expected',
             'type': 'type_error.subclass',
-            'ctx': {'expected_class': 'ArbitraryType'},
+            'ctx': {'expected_class': 'ArbitraryType', 'actual_type': 'int'},
         }
     ]
 
@@ -964,7 +1019,14 @@ def test_bare_type_type_validation_fails():
     arbitrary_type = ArbitraryType()
     with pytest.raises(ValidationError) as exc_info:
         ArbitraryClassAllowedModel(t=arbitrary_type)
-    assert exc_info.value.errors() == [{'loc': ('t',), 'msg': 'a class is expected', 'type': 'type_error.class'}]
+    assert exc_info.value.errors() == [
+        {
+            'loc': ('t',),
+            'msg': 'a class is expected',
+            'type': 'type_error.class',
+            'ctx': {'actual_type': 'ArbitraryType'}
+        }
+    ]
 
 
 def test_annotation_field_name_shadows_attribute():
@@ -1197,7 +1259,12 @@ def test_parse_root_as_mapping():
     with pytest.raises(ValidationError) as exc_info:
         MyModel.parse_obj({'__root__': {'1': '2'}})
     assert exc_info.value.errors() == [
-        {'loc': ('__root__', '__root__'), 'msg': 'str type expected', 'type': 'type_error.str'}
+        {
+            'loc': ('__root__', '__root__'),
+            'msg': 'str type expected',
+            'type': 'type_error.str',
+            'ctx': {'value': {'1': '2'}}
+        }
     ]
 
 
@@ -1210,12 +1277,22 @@ def test_parse_obj_non_mapping_root():
     with pytest.raises(ValidationError) as exc_info:
         MyModel.parse_obj({'__not_root__': ['a']})
     assert exc_info.value.errors() == [
-        {'loc': ('__root__',), 'msg': 'value is not a valid list', 'type': 'type_error.list'}
+        {
+            'ctx': {'value': {'__not_root__': ['a']}},
+            'loc': ('__root__',),
+            'msg': 'value is not a valid list',
+            'type': 'type_error.list'
+        }
     ]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         MyModel.parse_obj({'__root__': ['a'], 'other': 1})
     assert exc_info.value.errors() == [
-        {'loc': ('__root__',), 'msg': 'value is not a valid list', 'type': 'type_error.list'}
+        {
+            'loc': ('__root__',),
+            'msg': 'value is not a valid list',
+            'type': 'type_error.list',
+            'ctx': {'value': {'__root__': ['a'], 'other': 1}}
+        }
     ]
 
 
