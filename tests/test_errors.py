@@ -128,7 +128,7 @@ def test_error_on_optional():
       "a"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
     "ctx": {
       "value": "not_int"
     }
@@ -156,7 +156,7 @@ def test_error_on_optional():
       "x"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
     "ctx": {
       "value": "not_int"
     }
@@ -166,15 +166,20 @@ def test_error_on_optional():
       "d"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
-    "ctx": {"value": "string"}
+    "type": "type_error.integer",
+    "ctx": {
+      "value": "string"
+    }
   },
   {
     "loc": [
       "d"
     ],
     "msg": "value is not a valid uuid",
-    "type": "type_error.uuid"
+    "type": "type_error.uuid",
+    "ctx": {
+      "value": "string"
+    }
   },
   {
     "loc": [
@@ -182,7 +187,7 @@ def test_error_on_optional():
       "__key__"
     ],
     "msg": "value is not a valid integer",
-    "type": "type_error.integer"
+    "type": "type_error.integer",
     "ctx": {
       "value": "not_int"
     }
@@ -212,8 +217,8 @@ def test_error_on_optional():
     "msg": "yet another error message template 42",
     "type": "value_error.number.not_gt",
     "ctx": {
-      "limit_value": 42,
-      "value": 21
+      "value": 21,
+      "limit_value": 42
     }
   }
 ]""",
@@ -231,11 +236,11 @@ b -> z
 c -> 0 -> x
   value is not a valid integer (type=type_error.integer; value=not_int)
 d
-  value is not a valid integer (type=type_error.integer, value=string)
+  value is not a valid integer (type=type_error.integer; value=string)
 d
-  value is not a valid uuid (type=type_error.uuid, value=string)
+  value is not a valid uuid (type=type_error.uuid; value=string)
 e -> __key__
-  value is not a valid integer (type=type_error.integer, value=not_int)
+  value is not a valid integer (type=type_error.integer; value=not_int)
 f -> 0
   none is not an allowed value (type=type_error.none.not_allowed)
 g
@@ -396,7 +401,7 @@ def test_validation_error_methods():
 x
   value is not a valid integer (type=type_error.integer; value=x)"""
     )
-    assert e.errors() == [{'loc': ('x',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer'}]
+    assert e.errors() == [{'loc': ('x',), 'msg': 'value is not a valid integer', 'type': 'type_error.integer', 'ctx': {'value': 'x'}}]
     assert e.json(indent=None) == (
         '[{"loc": ["x"], "msg": "value is not a valid integer", "type": "type_error.integer"}]'
     )
